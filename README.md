@@ -1,73 +1,48 @@
-# TextGenerator
-# 🧠 GPT-2 Text Generator using Gradio
+# Install required libraries (if not already installed)
+# !pip install gradio transformers torch
 
-This project provides a simple user interface to generate creative text using OpenAI's GPT-2 model. It uses the Hugging Face `transformers` library and `gradio` to build an interactive web-based app.
+import gradio as gr
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import torch
 
-## 🚀 Features
+# Load model and tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+model = GPT2LMHeadModel.from_pretrained('gpt2')
 
-- Generates coherent text from a given prompt
-- Adjustable max length and temperature controls
-- User-friendly Gradio interface
-- Runs on CPU or GPU (if available)
+# Move model to GPU if available
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model = model.to(device)
 
-## 🛠️ Requirements
+# Define the text generation function
+def generate_text_gpt2(prompt, max_length=100, temperature=1.0):
+    input_ids = tokenizer.encode(prompt, return_tensors='pt').to(device)
+    attention_mask = torch.ones(input_ids.shape, device=device)
 
-Install the necessary libraries before running the project:
+    output = model.generate(
+        input_ids,
+        attention_mask=attention_mask,
+        max_length=max_length,
+        temperature=temperature,
+        do_sample=True,
+        num_return_sequences=1,
+        pad_token_id=tokenizer.eos_token_id
+    )
 
-```bash
-pip install gradio transformers torch
-```
+    generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+    return generated_text
 
-## 📦 How to Run
+# Build the Gradio interface
+iface = gr.Interface(
+    fn=generate_text_gpt2,
+    inputs=[
+        gr.Textbox(label="Enter Prompt", placeholder="Type something..."),
+        gr.Slider(50, 300, value=100, step=10, label="Max Length"),
+        gr.Slider(0.1, 1.5, value=1.0, step=0.1, label="Temperature")
+    ],
+    outputs=gr.Textbox(label="Generated Text"),
+    title="GPT-2 Text Generator",
+    description="Generate creative text using OpenAI's GPT-2 model."
+)
 
-Simply run the `gpt2_gradio_app.py` script:
-
-```bash
-python gpt2_gradio_app.py
-```
-
-This will launch a local Gradio interface in your browser.
-
-## 🧑‍💻 Code Overview
-
-- Loads the pre-trained GPT-2 model and tokenizer from Hugging Face.
-- Provides a text box to input a prompt.
-- Users can adjust:
-  - **Max Length**: Controls the length of the generated output.
-  - **Temperature**: Controls the randomness of the output. (Higher = more creative)
-- Displays generated text below the interface.
-
-## 💡 Parameters Explained
-
-| Parameter    | Description                                                                 |
-|--------------|-----------------------------------------------------------------------------|
-| Prompt       | Starting text for the model to continue generating from                    |
-| Max Length   | Maximum number of tokens in the generated text (range: 50 to 300)          |
-| Temperature  | Sampling randomness (range: 0.1 to 1.5). Lower = more predictable output    |
-
-## 📷 Interface Preview
-
-> The Gradio UI includes:
-> - Prompt input box
-> - Sliders for max length and temperature
-> - Output box for generated text
-
-## 📝 Example
-
-Input Prompt:
-```
-Once upon a time in a distant galaxy
-```
-
-Generated Output:
-```
-Once upon a time in a distant galaxy, there was a planet inhabited by creatures made of pure energy...
-```
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-Built with ❤️ using [Hugging Face Transformers](https://huggingface.co/transformers/) and [Gradio](https://www.gradio.app/).
+# Launch the interface
+iface.launch()
